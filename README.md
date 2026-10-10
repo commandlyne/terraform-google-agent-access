@@ -23,14 +23,16 @@ All resources are in `project_id`:
 | `roles/iam.workloadIdentityUser` on the service account | One binding per subject. The module never binds the whole pool. |
 | Your role grants | Organization, folder and project scopes. |
 
-The module refuses roles that could change IAM, mint credentials or read data contents broadly: `owner`, `editor`, `viewer`, `iam.securityAdmin`, `iam.serviceAccount{Admin,KeyAdmin,TokenCreator,User}`, `iam.workloadIdentityUser`, `resourcemanager.organizationAdmin` and `logging.privateLogViewer`. If you need something these roles would cover, use a narrower predefined role or a custom role.
+`subjects` takes up to 100 agents, which keeps `attribute_condition` under Google's 4096-character limit.
+
+The module refuses roles that would let the agent widen its own access, mint credentials, run as other identities or read data contents. That covers the basic roles, every `roles/iam.*` role except the four viewer/reviewer roles, any role ending in `admin`, `editor`, `user`, `creator`, `invoker`, `accessor`, `decrypter`, `signer`, `login` or similar, Storage and BigQuery object/data roles, Secret Manager, and `logging.privateLogViewer`. The guard is a backstop, not a review: check every role you grant. If you need something it refuses, use a custom role.
 
 ## Prerequisites
 
 The identity running `terraform apply` needs:
 
 - On `project_id`: `roles/iam.workloadIdentityPoolAdmin`, `roles/iam.serviceAccountAdmin` and `roles/serviceusage.serviceUsageAdmin`.
-- To grant `organization_roles` or `folder_roles`: `roles/iam.securityAdmin`, or `resourcemanager.*.setIamPolicy`, on that scope.
+- To grant `organization_roles`, `folder_roles` or `project_roles`: `roles/iam.securityAdmin`, or the matching `resourcemanager.*.setIamPolicy`, on each scope.
 
 Check these organization policies:
 
@@ -68,18 +70,15 @@ Check these organization policies:
 Anyone who can talk to the agent can use these permissions, and text the agent reads (log entries, findings, issue descriptions) can try to steer it. Grant read-only roles, and only the ones the agent's job needs.
 
 - `roles/logging.viewer` reads every log except Data Access logs. That includes application logs, which sometimes contain sensitive values.
+- `roles/cloudasset.viewer` returns full resource configs, such as Cloud Run environment variables and VM metadata (`startup-script`). If those hold secrets in your organization, use a custom role with only `cloudasset.assets.searchAllResources` and `cloudasset.assets.searchAllIamPolicies`.
 - `roles/artifactregistry.reader` lets the agent pull images, not only read their metadata. The example leaves it out on purpose.
 
 ## Revocation
 
-You can revoke in four ways:
-
 - **One agent:** remove its entry from `subjects` and apply. That deletes its binding and drops it from the provider condition.
-- **All agents:** `terraform destroy -target=google_iam_workload_identity_pool_provider.commandlyne`, or disable the provider in the console.
-- **Revoke in Control Panel.** Control Panel stops issuing tokens at once.
-- **After any revocation,** tokens already issued stay valid until they expire: up to 10 minutes for the Commandlyne token and 1 hour for the Google access token.
+- **Every agent:** revoke the connections in Control Panel, which stops issuing tokens at once, or disable the provider in the console. Avoid `terraform destroy -target` on the provider: Google soft-deletes it for 30 days, so the next apply fails on the ID until you undelete it or change `resource_prefix`.
 
-Note: Google soft-deletes pools and providers for 30 days. You can't reuse their IDs during that time, so change `resource_prefix` if you recreate them.
+Tokens already issued stay valid until they expire: up to 10 minutes for the Commandlyne token and 1 hour for the Google access token.
 
 ## Audit
 

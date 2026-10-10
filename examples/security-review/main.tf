@@ -1,7 +1,8 @@
 # Read-only security review across a whole organization: IAM, findings,
 # assets, network, org policy, KMS metadata and Artifact Registry
-# vulnerability scans. Nothing here can change resources or read data contents
-# such as objects, secrets, table rows or Data Access logs.
+# vulnerability scans. Nothing here can change resources or read objects,
+# secrets, table rows or Data Access logs. cloudasset.viewer and logging.viewer
+# do expose resource configs and logs; see "Choosing roles" in the README.
 terraform {
   required_version = ">= 1.7.0"
   required_providers {
