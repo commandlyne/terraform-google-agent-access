@@ -1,5 +1,15 @@
+output "service_accounts" {
+  description = "Service accounts this module created, by service_account_id: email, member (for IAM grants), name and unique_id."
+  value = { for id, sa in google_service_account.agent : id => {
+    email     = sa.email
+    member    = sa.member
+    name      = sa.name
+    unique_id = sa.unique_id
+  } }
+}
+
 output "service_account_emails" {
-  description = "Service account email per agent label."
+  description = "Each agent's service account email, created or existing, by agent label."
   value       = local.sa_email
 }
 

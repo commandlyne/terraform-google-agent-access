@@ -42,7 +42,7 @@ module "agent_access" {
 resource "google_project_iam_member" "agent_viewer" {
   project = var.project_id
   role    = "roles/browser"
-  member  = "serviceAccount:${module.agent_access.service_account_emails["secops"]}"
+  member  = module.agent_access.service_accounts["cmdl-secops"].member
 }
 
 # Paste into Control Panel: terraform output -json onboarding_payloads

@@ -71,15 +71,24 @@ Check these organization policies:
 
 Prefer a dedicated project for `project_id`: anyone who can act as service accounts there can act as these accounts.
 
+## Outputs
+
+| Output | Value |
+|---|---|
+| `onboarding_payloads` | Per agent: what Control Panel needs (`subject`, `provider`, `service_account_email`, `project_id`). |
+| `service_accounts` | Accounts the module created, by `service_account_id`: `email`, `member`, `name`, `unique_id`. |
+| `service_account_emails` | Each agent's account email, created or existing. |
+| `provider_name` | Full resource name of the provider. |
+
 ## Grant access
 
-Grant roles to `module.agent_access.service_account_emails["<agent>"]` like any other service account, at whichever scope fits. You need `setIamPolicy` on each scope you grant on.
+Grant roles to `module.agent_access.service_accounts["<service_account_id>"].member` (accounts the module created) or `service_account_emails["<agent>"]` (any agent's account), like any other service account, at whichever scope fits. You need `setIamPolicy` on each scope you grant on.
 
 ```hcl
 resource "google_project_iam_member" "agent" {
   project = "my-app-project"
   role    = "roles/logging.viewer"
-  member  = "serviceAccount:${module.agent_access.service_account_emails["secops"]}"
+  member  = module.agent_access.service_accounts["cmdl-secops"].member
 }
 # Wider scopes: google_folder_iam_member (folder = "folders/123")
 # or google_organization_iam_member (org_id = "123456789012").

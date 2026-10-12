@@ -3,7 +3,10 @@ mock_provider "google" {
     defaults = { name = "projects/123/locations/global/workloadIdentityPools/cmdl-agents" }
   }
   mock_resource "google_service_account" {
-    defaults = { email = "cmdl-agent-access@sec.iam.gserviceaccount.com" }
+    defaults = {
+      email  = "cmdl-agent-access@sec.iam.gserviceaccount.com"
+      member = "serviceAccount:cmdl-agent-access@sec.iam.gserviceaccount.com"
+    }
   }
 }
 
@@ -32,6 +35,10 @@ run "binds_each_agent_and_gates_the_exchange" {
   assert {
     condition     = keys(google_service_account.agent) == ["cmdl-agent-access", "cmdl-c-only"]
     error_message = "creates the default account once for a and b, a dedicated one for c, none for d"
+  }
+  assert {
+    condition     = keys(output.service_accounts) == ["cmdl-agent-access", "cmdl-c-only"] && output.service_accounts["cmdl-c-only"].member != null
+    error_message = "service_accounts must list only created accounts, with a member for grants"
   }
   assert {
     condition     = output.service_account_emails["a"] == output.service_account_emails["b"]
