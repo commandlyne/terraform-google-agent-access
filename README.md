@@ -1,6 +1,6 @@
 # terraform-google-agent-access
 
-This module lets [Commandlyne](https://commandlyne.ai) agents act as a service account in your Google Cloud organization. It uses [Workload Identity Federation](https://cloud.google.com/iam/docs/workload-identity-federation), so no service-account key is created, stored or uploaded.
+This module lets [Commandlyne](https://commandlyne.ai) agents act as a service account in your Google Cloud project. It grants that account no roles: you decide what it can access, and at which scope. It uses [Workload Identity Federation](https://cloud.google.com/iam/docs/workload-identity-federation), so no service-account key is created, stored or uploaded.
 
 ## How it works
 
@@ -21,18 +21,12 @@ All resources are in `project_id`:
 | OIDC provider `<prefix>-commandlyne` | `google.subject = assertion.sub`, plus `attribute_condition` limited to your subjects. |
 | Service account `<prefix>-agent-access` | No keys. |
 | `roles/iam.workloadIdentityUser` on the service account | One binding per subject. The module never binds the whole pool. |
-| Your role grants | Organization, folder and project scopes. |
 
 `subjects` takes up to 100 agents, which keeps `attribute_condition` under Google's 4096-character limit.
 
-The module refuses roles that would let the agent widen its own access, mint credentials, run as other identities or read data contents. That covers the basic roles, every `roles/iam.*` role except the four viewer/reviewer roles, any role ending in `admin`, `editor`, `user`, `creator`, `invoker`, `accessor`, `decrypter`, `signer`, `login` or similar, Storage and BigQuery object/data roles, Secret Manager, and `logging.privateLogViewer`. The guard is a backstop, not a review: check every role you grant. If you need something it refuses, use a custom role.
-
 ## Prerequisites
 
-The identity running `terraform apply` needs:
-
-- On `project_id`: `roles/iam.workloadIdentityPoolAdmin`, `roles/iam.serviceAccountAdmin` and `roles/serviceusage.serviceUsageAdmin`.
-- To grant `organization_roles`, `folder_roles` or `project_roles`: `roles/iam.securityAdmin`, or the matching `resourcemanager.*.setIamPolicy`, on each scope.
+The identity running `terraform apply` needs `roles/iam.workloadIdentityPoolAdmin`, `roles/iam.serviceAccountAdmin` and `roles/serviceusage.serviceUsageAdmin` on `project_id`.
 
 Check these organization policies:
 
@@ -46,14 +40,11 @@ Check these organization policies:
 
    ```hcl
    module "agent_access" {
-     source = "github.com/clawworker/terraform-google-agent-access?ref=v0.1.0"
+     source = "github.com/commandlyne/terraform-google-agent-access?ref=v0.1.0"
 
-     project_id      = "my-security-project"
-     issuer_uri      = "https://oidc.commandlyne.ai/org/oi_..."
-     subjects        = { secops = "fc_..." }
-     organization_id = "123456789012"
-
-     organization_roles = ["roles/iam.securityReviewer", "roles/cloudasset.viewer"]
+     project_id = "my-project"
+     issuer_uri = "https://oidc.commandlyne.ai/org/oi_..."
+     subjects   = { secops = "fc_..." }
    }
 
    output "onboarding_payload" {
@@ -62,16 +53,42 @@ Check these organization policies:
    ```
 
 3. Paste the output of `terraform output -json onboarding_payload` into Control Panel, then click **Connect**.
+4. Grant the service account the roles the agent needs. Until you do, it can authenticate but can't read anything.
 
-[`examples/security-review`](examples/security-review) has a read-only role set for security review across a whole organization.
+## Grant access
+
+Grant roles to `module.agent_access.service_account_email` like any other service account, at whichever scope fits:
+
+```hcl
+resource "google_project_iam_member" "agent" {
+  project = "my-app-project"
+  role    = "roles/logging.viewer"
+  member  = "serviceAccount:${module.agent_access.service_account_email}"
+}
+# Wider scopes: google_folder_iam_member (folder = "folders/123")
+# or google_organization_iam_member (org_id = "123456789012").
+```
+
+Or with gcloud:
+
+```sh
+SA=cmdl-agent-access@my-project.iam.gserviceaccount.com
+gcloud projects add-iam-policy-binding my-app-project --member="serviceAccount:$SA" --role=roles/logging.viewer
+gcloud resource-manager folders add-iam-policy-binding 123 --member="serviceAccount:$SA" --role=roles/browser
+gcloud organizations add-iam-policy-binding 123456789012 --member="serviceAccount:$SA" --role=roles/iam.securityReviewer
+```
+
+[`examples/basic`](examples/basic) puts the module and a grant together.
 
 ### Choosing roles
 
-Anyone who can talk to the agent can use these permissions, and text the agent reads (log entries, findings, issue descriptions) can try to steer it. Grant read-only roles, and only the ones the agent's job needs.
+Anyone who can talk to the agent can use these permissions, and text the agent reads (log entries, findings, issue descriptions) can try to steer it. Grant only what the agent's job needs, at the narrowest scope that works.
 
+- Never grant basic roles (`owner`, `editor`, `viewer`). Avoid roles that let the account change IAM, create keys or tokens, or act as other service accounts (`iam.serviceAccountUser`, `iam.serviceAccountTokenCreator`, `*Admin`).
+- Prefer viewer roles. If none fits, create a custom role with exactly the permissions needed.
 - `roles/logging.viewer` reads every log except Data Access logs. That includes application logs, which sometimes contain sensitive values.
-- `roles/cloudasset.viewer` returns full resource configs, such as Cloud Run environment variables and VM metadata (`startup-script`). If those hold secrets in your organization, use a custom role with only `cloudasset.assets.searchAllResources` and `cloudasset.assets.searchAllIamPolicies`.
-- `roles/artifactregistry.reader` lets the agent pull images, not only read their metadata. The example leaves it out on purpose.
+- `roles/cloudasset.viewer` returns full resource configs, such as Cloud Run environment variables and VM metadata (`startup-script`).
+- `roles/artifactregistry.reader` lets the agent pull images, not only read their metadata.
 
 ## Revocation
 

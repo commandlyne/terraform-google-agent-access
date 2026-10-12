@@ -40,8 +40,8 @@ jobs:
           tflint --init
           tflint --recursive
 
-      - name: validate examples/security-review
-        working-directory: examples/security-review
+      - name: validate examples/basic
+        working-directory: examples/basic
         run: |
           terraform init -backend=false -input=false
           terraform validate
