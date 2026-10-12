@@ -18,9 +18,9 @@ variable "issuer_uri" {
   description = "Issuer URI from Control Panel."
 }
 
-variable "subjects" {
-  type        = map(string)
-  description = "label => fc_... subject from Control Panel."
+variable "subject" {
+  type        = string
+  description = "The agent's fc_... subject from Control Panel."
 }
 
 provider "google" {
@@ -32,7 +32,9 @@ module "agent_access" {
 
   project_id = var.project_id
   issuer_uri = var.issuer_uri
-  subjects   = var.subjects
+  agents = {
+    secops = { subject = var.subject, service_account_id = "cmdl-secops" }
+  }
 }
 
 # Example grant: read-only access to one project. Use google_folder_iam_member
@@ -40,11 +42,11 @@ module "agent_access" {
 resource "google_project_iam_member" "agent_viewer" {
   project = var.project_id
   role    = "roles/browser"
-  member  = "serviceAccount:${module.agent_access.service_account_email}"
+  member  = module.agent_access.service_accounts["cmdl-secops"].member
 }
 
-# Paste into Control Panel: terraform output -json onboarding_payload
-output "onboarding_payload" {
-  description = "Values Control Panel needs to finish connecting."
-  value       = module.agent_access.onboarding_payload
+# Paste into Control Panel: terraform output -json onboarding_payloads
+output "onboarding_payloads" {
+  description = "Values Control Panel needs to finish connecting each agent."
+  value       = module.agent_access.onboarding_payloads
 }
