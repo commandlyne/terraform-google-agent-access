@@ -1,0 +1,5 @@
+project_id = "my-project"
+issuer_uri = "https://oidc.commandlyne.ai/org/oi_..."
+subjects = {
+  secops = "fc_..."
+}

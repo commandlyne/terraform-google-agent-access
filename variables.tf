@@ -36,32 +36,3 @@ variable "resource_prefix" {
     error_message = "resource_prefix must be 2-11 chars of lowercase letters, digits and hyphens, start with a letter, and not start with \"gcp\" (reserved by Google)."
   }
 }
-
-variable "organization_id" {
-  type        = string
-  default     = null
-  description = "Numeric organization ID. Required when organization_roles is set."
-
-  validation {
-    condition     = var.organization_id == null || can(regex("^[0-9]+$", var.organization_id))
-    error_message = "organization_id must be the numeric organization ID."
-  }
-}
-
-variable "organization_roles" {
-  type        = list(string)
-  default     = []
-  description = "Roles granted to the service account on the organization."
-}
-
-variable "folder_roles" {
-  type        = map(list(string))
-  default     = {}
-  description = "Roles granted to the service account per folder: \"folders/123\" => [roles]."
-}
-
-variable "project_roles" {
-  type        = map(list(string))
-  default     = {}
-  description = "Roles granted to the service account per project: project ID => [roles]."
-}
