@@ -3,7 +3,7 @@ resource "google_project_service" "apis" {
     "iam.googleapis.com",
     "iamcredentials.googleapis.com",       # generateAccessToken for the impersonation step
     "sts.googleapis.com",                  # exchanges the Commandlyne token
-    "cloudresourcemanager.googleapis.com", # most gcloud commands need it on the SA's own project
+    "cloudresourcemanager.googleapis.com", # required by Google's WIF setup
   ])
 
   project            = var.project_id

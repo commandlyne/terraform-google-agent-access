@@ -52,12 +52,14 @@ Check these organization policies:
    }
    ```
 
-3. Paste the output of `terraform output -json onboarding_payload` into Control Panel, then click **Connect**.
-4. Grant the service account the roles the agent needs. Until you do, it can authenticate but can't read anything.
+3. Grant the service account the roles the agent needs (see below). It has no roles of its own until you do.
+4. Paste the output of `terraform output -json onboarding_payload` into Control Panel, then click **Connect**.
+
+Prefer a dedicated project for `project_id`: anyone who can act as service accounts there can act as this one.
 
 ## Grant access
 
-Grant roles to `module.agent_access.service_account_email` like any other service account, at whichever scope fits:
+Grant roles to `module.agent_access.service_account_email` like any other service account, at whichever scope fits. You need `setIamPolicy` on each scope you grant on.
 
 ```hcl
 resource "google_project_iam_member" "agent" {
@@ -69,14 +71,14 @@ resource "google_project_iam_member" "agent" {
 # or google_organization_iam_member (org_id = "123456789012").
 ```
 
-Or with gcloud:
+Or with gcloud (`folders` / `organizations add-iam-policy-binding` for wider scopes):
 
 ```sh
-SA=cmdl-agent-access@my-project.iam.gserviceaccount.com
-gcloud projects add-iam-policy-binding my-app-project --member="serviceAccount:$SA" --role=roles/logging.viewer
-gcloud resource-manager folders add-iam-policy-binding 123 --member="serviceAccount:$SA" --role=roles/browser
-gcloud organizations add-iam-policy-binding 123456789012 --member="serviceAccount:$SA" --role=roles/iam.securityReviewer
+gcloud projects add-iam-policy-binding my-app-project --role=roles/logging.viewer \
+  --member="serviceAccount:cmdl-agent-access@my-project.iam.gserviceaccount.com"
 ```
+
+Google bills the service account's calls to `project_id`, so enable there any API the agent calls (for example `cloudasset.googleapis.com`), or they fail with `SERVICE_DISABLED`.
 
 [`examples/basic`](examples/basic) puts the module and a grant together.
 
@@ -104,7 +106,7 @@ Turn on Data Access audit logs for `sts.googleapis.com` and `iamcredentials.goog
 Each exchange logs the subject (`fc_...`). Control Panel shows which agent a subject belongs to.
 
 ```sh
-gcloud logging read 'protoPayload.serviceName="sts.googleapis.com" OR protoPayload.serviceName="iamcredentials.googleapis.com"' --project=my-security-project --limit=20
+gcloud logging read 'protoPayload.serviceName="sts.googleapis.com" OR protoPayload.serviceName="iamcredentials.googleapis.com"' --project=my-project --limit=20
 ```
 
 ## Costs

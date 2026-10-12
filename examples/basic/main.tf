@@ -1,5 +1,3 @@
-# The module only lets the agent act as a service account. What that account
-# can do is up to you: grant roles outside the module, at any scope.
 terraform {
   required_version = ">= 1.7.0"
   required_providers {
