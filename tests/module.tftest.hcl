@@ -34,12 +34,12 @@ run "binds_each_agent_and_gates_the_exchange" {
     error_message = "creates the default account once for a and b, a dedicated one for c, none for d"
   }
   assert {
-    condition     = google_service_account.agent["cmdl-agent-access"].description == "Impersonated by Commandlyne agents a, b via workload identity federation. No keys."
-    error_message = "description must name the agents sharing the account"
+    condition     = output.service_account_emails["a"] == output.service_account_emails["b"]
+    error_message = "agents with the same service_account_id must share one account"
   }
   assert {
-    condition     = google_service_account_iam_member.agent_can_impersonate["d"].service_account_id == "projects/other-proj/serviceAccounts/reader@other-proj.iam.gserviceaccount.com"
-    error_message = "existing account must be bound in its own project"
+    condition     = google_service_account_iam_member.agent_can_impersonate["d"].service_account_id == "projects/-/serviceAccounts/reader@other-proj.iam.gserviceaccount.com"
+    error_message = "existing account must be bound by its email"
   }
   assert {
     condition     = output.onboarding_payloads["d"].service_account_email == "reader@other-proj.iam.gserviceaccount.com" && output.onboarding_payloads["d"].subject == "fc_cbcdefghjkmnpqrs0123456789"

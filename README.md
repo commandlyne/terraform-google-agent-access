@@ -6,7 +6,7 @@ This module lets [Commandlyne](https://commandlyne.ai) agents act as a service a
 
 1. Commandlyne Control Panel signs a short-lived token (10 minutes) for one agent. The token's issuer is unique to your organization (`https://oidc.commandlyne.ai/org/oi_...`) and its subject is unique to the connection (`fc_...`).
 2. Google STS accepts the token only if the issuer matches your provider **and** the subject is in the provider's `attribute_condition`.
-3. STS then lets the agent impersonate the service account this module creates. The service account can do only what you grant it.
+3. STS then lets the agent impersonate its service account: one this module creates, or an existing one you bind. The service account can do only what you grant it.
 
 Control Panel signs tokens with a Cloud KMS key that can't be exported. Google fetches the public keys from the issuer URL.
 
@@ -61,13 +61,13 @@ Check these organization policies:
      }
    }
 
-   output "onboarding_payload" {
-     value = module.agent_access.onboarding_payloads["secops"]
+   output "onboarding_payloads" {
+     value = module.agent_access.onboarding_payloads
    }
    ```
 
 3. Grant each service account the roles its agents need (see below). A created account has no roles until you do.
-4. Paste the output of `terraform output -json onboarding_payload` into that agent's Control Panel setup, then click **Connect**. The payload names its agent, so Control Panel refuses one meant for another agent.
+4. Paste the output of `terraform output -json onboarding_payloads` into each agent's Control Panel setup, then click **Connect**. Each payload names its agent, so Control Panel picks the right one and refuses a paste with none for that agent.
 
 Prefer a dedicated project for `project_id`: anyone who can act as service accounts there can act as these accounts.
 
@@ -92,7 +92,7 @@ gcloud projects add-iam-policy-binding my-app-project --role=roles/logging.viewe
   --member="serviceAccount:cmdl-secops@my-project.iam.gserviceaccount.com"
 ```
 
-Google bills the service account's calls to `project_id`, so enable there any API the agent calls (for example `cloudasset.googleapis.com`), or they fail with `SERVICE_DISABLED`.
+Google bills the service account's calls to the project that owns it (`project_id` for accounts this module creates), so enable there any API the agent calls (for example `cloudasset.googleapis.com`), or they fail with `SERVICE_DISABLED`.
 
 [`examples/basic`](examples/basic) puts the module and a grant together.
 

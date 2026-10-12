@@ -36,9 +36,9 @@ resource "google_iam_workload_identity_pool_provider" "commandlyne" {
 }
 
 locals {
-  # Accounts to create, each with the agents that share it; existing ones are only bound.
-  created  = { for k, a in var.agents : a.service_account_id => k... if a.existing_service_account_email == null }
-  sa_email = { for k, a in var.agents : k => coalesce(a.existing_service_account_email, try(google_service_account.agent[a.service_account_id].email, null)) }
+  # Accounts to create; agents repeating an ID share it. Existing ones are only bound.
+  created  = toset([for a in values(var.agents) : a.service_account_id if a.existing_service_account_email == null])
+  sa_email = { for k, a in var.agents : k => a.existing_service_account_email != null ? a.existing_service_account_email : google_service_account.agent[a.service_account_id].email }
 }
 
 resource "google_service_account" "agent" {
@@ -47,7 +47,7 @@ resource "google_service_account" "agent" {
   project      = var.project_id
   account_id   = each.key
   display_name = "Commandlyne agent access"
-  description  = "Impersonated by Commandlyne agents ${join(", ", each.value)} via workload identity federation. No keys."
+  description  = "Impersonated by Commandlyne agents via workload identity federation. No keys."
 
   depends_on = [google_project_service.apis]
 }
@@ -57,7 +57,7 @@ resource "google_service_account" "agent" {
 resource "google_service_account_iam_member" "agent_can_impersonate" {
   for_each = var.agents
 
-  service_account_id = "projects/${regex("@([a-z0-9-]+)\\.", local.sa_email[each.key])[0]}/serviceAccounts/${local.sa_email[each.key]}"
+  service_account_id = "projects/-/serviceAccounts/${local.sa_email[each.key]}" # IAM resolves the project from the email
   role               = "roles/iam.workloadIdentityUser"
   member             = "principal://iam.googleapis.com/${google_iam_workload_identity_pool.agents.name}/subject/${each.value.subject}"
 }

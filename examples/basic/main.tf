@@ -45,8 +45,8 @@ resource "google_project_iam_member" "agent_viewer" {
   member  = "serviceAccount:${module.agent_access.service_account_emails["secops"]}"
 }
 
-# Paste into Control Panel: terraform output -json onboarding_payload
-output "onboarding_payload" {
-  description = "Values Control Panel needs to finish connecting."
-  value       = module.agent_access.onboarding_payloads["secops"]
+# Paste into Control Panel: terraform output -json onboarding_payloads
+output "onboarding_payloads" {
+  description = "Values Control Panel needs to finish connecting each agent."
+  value       = module.agent_access.onboarding_payloads
 }
