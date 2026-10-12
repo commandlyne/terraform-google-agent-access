@@ -16,7 +16,7 @@ Control Panel signs tokens with a Cloud KMS key that can't be exported. Google f
 |---|---|
 | APIs: `iam`, `iamcredentials`, `sts`, `cloudresourcemanager` | In `project_id`. Not disabled on destroy. |
 | Workload identity pool `pool_id` (default `cmdl-agents`) | In `project_id`. |
-| OIDC provider `provider_id` (default `cmdl-commandlyne`) | `google.subject = assertion.sub`, plus `attribute_condition` limited to your agents. |
+| OIDC provider `provider_id` (default `commandlyne`) | `google.subject = assertion.sub`, plus `attribute_condition` limited to your agents. |
 | One service account per distinct `service_account_id` (default `cmdl-agent-access`) | In `project_id`. No keys. None for agents with `existing_service_account_email`. |
 | `roles/iam.workloadIdentityUser` on each agent's service account | One binding per agent. The module never binds the whole pool. |
 

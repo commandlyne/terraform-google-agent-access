@@ -59,7 +59,7 @@ variable "pool_id" {
 
 variable "provider_id" {
   type        = string
-  default     = "cmdl-commandlyne"
+  default     = "commandlyne"
   description = "Workload identity provider ID. Same caveats as pool_id."
 
   validation {
