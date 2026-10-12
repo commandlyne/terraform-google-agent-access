@@ -1,6 +1,6 @@
-output "service_account_email" {
-  description = "Service account the agents act as."
-  value       = google_service_account.agent.email
+output "service_account_emails" {
+  description = "Service account email per agent label."
+  value       = local.sa_email
 }
 
 output "provider_name" {
@@ -8,11 +8,12 @@ output "provider_name" {
   value       = google_iam_workload_identity_pool_provider.commandlyne.name
 }
 
-output "onboarding_payload" {
-  description = "Paste `terraform output -json onboarding_payload` into Control Panel to finish connecting."
-  value = {
+output "onboarding_payloads" {
+  description = "Per agent label: paste `terraform output -json` of one entry into that agent's Control Panel setup."
+  value = { for k, a in var.agents : k => {
+    subject               = a.subject
     provider              = google_iam_workload_identity_pool_provider.commandlyne.name
-    service_account_email = google_service_account.agent.email
+    service_account_email = local.sa_email[k]
     project_id            = var.project_id
-  }
+  } }
 }
